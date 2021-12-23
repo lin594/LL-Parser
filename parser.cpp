@@ -1,9 +1,10 @@
 #include "parser.h"
 
+#include <algorithm>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <sstream>
-
 /**
  * @brief 打印一个集合到标准输出
  *
@@ -21,14 +22,16 @@ void printProduction(const std::vector<std::string>& production);
 Parser::Parser(std::string grammarFilename) {
     init();
     inputGrammar(grammarFilename);
+    T.insert(EndSymbol);
     // 输出若干信息
     printV();
     printT();
     printS();
     printP();
     printCatalog();
-    findFIRST();
-    findFOLLOW();
+    constructFIRST();
+    constructFOLLOW();
+    constructTable();
 }
 
 void Parser::init() {
@@ -149,6 +152,11 @@ void printProduction(const std::vector<std::string>& production) {
     for (int i = 1; i < production.size(); i++)
         std::cout << production[i] << " ";
 }
+std::string ProductionToString(const std::vector<std::string>& production) {
+    std::string s = production[0] + "->";
+    for (int i = 1; i < production.size(); i++) s += production[i];
+    return s;
+}
 
 void Parser::printV() {
     std::cout << "非终极符符号V\t";
@@ -184,13 +192,15 @@ void Parser::printCatalog(std::string v) {
 }
 
 bool containsEpsilon(const std::set<std::string>& s) {
-    return s.count(epsilon);
+    return s.count(EpsilonSymbol);
 }
+
 std::set<std::string> excepctEpsilon(std::set<std::string> s) {
-    s.erase(epsilon);
+    s.erase(EpsilonSymbol);
     return s;
 }
-void Parser::findFIRST() {
+
+void Parser::constructFIRST() {
     // 终极符t的FIRST就是{t}
     for (auto t : T) {
         FIRST[t].insert(t);
@@ -207,12 +217,12 @@ void Parser::findFIRST() {
                 const std::vector<std::string>& production{P[id]};
                 // 产生式右侧第一个符号为firWst
                 const std::string& first{production[1]};
-                // 产生式右侧第一个符号是终极符
+                // 规则1：产生式右侧第一个符号是终极符
                 if (T.count(first)) FIRST[v].insert(first);
-                // 产生式右侧第一个符号是epsilon
-                else if (first == epsilon)
-                    FIRST[v].insert(epsilon);
-                // 产生式右侧第一个符号是非终极符
+                // 规则2：产生式右侧第一个符号是epsilon
+                else if (first == EpsilonSymbol)
+                    FIRST[v].insert(EpsilonSymbol);
+                // 规则3：产生式右侧第一个符号是非终极符
                 else {
                     auto&& set = excepctEpsilon(FIRST[first]);
                     FIRST[v].insert(set.begin(), set.end());
@@ -223,7 +233,7 @@ void Parser::findFIRST() {
                         auto&& set = excepctEpsilon(FIRST[production[i]]);
                         FIRST[v].insert(set.begin(), set.end());
                     }
-                    if (i == production.size()) FIRST[v].insert(epsilon);
+                    if (i == production.size()) FIRST[v].insert(EpsilonSymbol);
                 }
                 hasChange |= FIRST[v].size() != before;
             }
@@ -234,13 +244,13 @@ void Parser::findFIRST() {
         std::cout << std::endl;
     }
 }
-void Parser::findFOLLOW() {
+void Parser::constructFOLLOW() {
     // 规则1：开始符号的FOLLOW集里至少有$
-    FOLLOW[S].insert("$");
+    FOLLOW[S].insert(EndSymbol);
     int before = -1, after = 0;
     do {
         before = after;
-        for (auto production : P) {
+        for (auto& production : P) {
             std::string v = production[0];
             // 规则2：产生式里非终极符的FOLLOW要包括下一个字段的非空FIRST集
             for (int i = 1; i < production.size() - 1; i++)
@@ -254,7 +264,7 @@ void Parser::findFOLLOW() {
                 if (!V.count(production[i])) break;
                 FOLLOW[production[i]].insert(FOLLOW[v].begin(),
                                              FOLLOW[v].end());
-                if (!FIRST[production[i]].count(epsilon)) break;
+                if (!FIRST[production[i]].count(EpsilonSymbol)) break;
             }
         }
         after = 0;
@@ -265,4 +275,44 @@ void Parser::findFOLLOW() {
         printSet(FOLLOW[v]);
         std::cout << std::endl;
     }
+}
+void Parser::constructTable() {
+    table.clear();
+    for (int i = 0; i < P.size(); i++) {
+        std::string A = P[i][0];
+        for (auto& a : FIRST[P[i][1]])
+            if (a != EpsilonSymbol) table[{A, a}].push_back(i);
+        if (FIRST[P[i][1]].count(EpsilonSymbol))
+            for (auto& b : FOLLOW[A]) table[{A, b}].push_back(i);
+    }
+    bool isLL = true;
+    for (auto& i : table)
+        if (i.second.size() != 1) {
+            isLL = false;
+            break;
+        }
+    if (isLL == false) {
+        std::cout << "这不是一个LL(1)文法" << std::endl;
+        return;
+    }
+    std::map<std::string, int> colLength;
+    for (auto& i : table)
+        colLength[i.first.second] =
+            std::max(colLength[i.first.second],
+                     (int)ProductionToString(P[i.second[0]]).length());
+    bool hasEpsilon = T.erase(EpsilonSymbol);
+    std::cout.setf(std::ios::left);
+    std::cout << std::setw(5) << " ";
+    for (auto& t : T) std::cout << std::setw(colLength[t] + 2) << t;
+    std::cout << std::endl;
+    for (auto& v : V) {
+        std::cout << std::setw(5) << v;
+        for (auto& t : T)
+            std::cout << std::setw(colLength[t] + 2)
+                      << (table[{v, t}].size()
+                              ? ProductionToString(P[table[{v, t}][0]])
+                              : "");
+        std::cout << std::endl;
+    }
+    if (hasEpsilon) T.insert(EpsilonSymbol);
 }

@@ -2,8 +2,8 @@
 #include <set>
 #include <string>
 #include <vector>
-// #define epsilon "ε"
-#define epsilon "`"
+#define EpsilonSymbol "`" // "ε"
+#define EndSymbol "$"
 /**
  * @brief 语法分析器
  *
@@ -47,6 +47,12 @@ class Parser {
      */
     std::map<std::string, std::set<std::string> > FOLLOW;
 
+    /**
+     * @brief 预测分析表
+     * <非终结符，终结符> 对应的产生式列表
+     */
+    std::map<std::pair<std::string, std::string>, std::vector<int> > table;
+
    private:
     /**
      * @brief 初始化
@@ -63,12 +69,18 @@ class Parser {
      * @brief 构建FIRST集合
      *
      */
-    void findFIRST();
+    void constructFIRST();
     /**
      * @brief 构建FOLLOW集合
      *
      */
-    void findFOLLOW();
+    void constructFOLLOW();
+    /**
+     * @brief 构造预测分析表
+     *
+     */
+
+    void constructTable();
 
    public:
     /**
