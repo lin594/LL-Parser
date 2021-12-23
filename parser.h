@@ -2,6 +2,8 @@
 #include <set>
 #include <string>
 #include <vector>
+// #define epsilon "ε"
+#define epsilon "`"
 /**
  * @brief 语法分析器
  *
@@ -33,6 +35,40 @@ class Parser {
      * 按产生式左侧的非终极符归类产生式（编号）
      */
     std::map<std::string, std::vector<int> > catalog;
+
+    /**
+     * @brief FIRST集合
+     * FIRST(X)是X可以推导出的开头终结符号集合
+     */
+    std::map<std::string, std::set<std::string> > FIRST;
+    /**
+     * @brief FOLLOW集
+     * FOLLOW(A)是该文法的所有句型中紧跟在A之后出现的终结符号或＄组成的集合，
+     */
+    std::map<std::string, std::set<std::string> > FOLLOW;
+
+   private:
+    /**
+     * @brief 初始化
+     *
+     */
+    void init();
+    /**
+     * @brief 输入文法
+     *
+     * @param grammarFilename 文法的路径
+     */
+    void inputGrammar(std::string grammarFilename);
+    /**
+     * @brief 构建FIRST集合
+     *
+     */
+    void findFIRST();
+    /**
+     * @brief 构建FOLLOW集合
+     *
+     */
+    void findFOLLOW();
 
    public:
     /**

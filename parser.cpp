@@ -4,7 +4,44 @@
 #include <iostream>
 #include <sstream>
 
+/**
+ * @brief 打印一个集合到标准输出
+ *
+ * @param set 待打印的集合
+ */
+void printSet(const std::set<std::string>& set);
+
+/**
+ * @brief 打印产生式
+ *
+ * @param production 产生式向量
+ */
+void printProduction(const std::vector<std::string>& production);
+
 Parser::Parser(std::string grammarFilename) {
+    init();
+    inputGrammar(grammarFilename);
+    // 输出若干信息
+    printV();
+    printT();
+    printS();
+    printP();
+    printCatalog();
+    findFIRST();
+    findFOLLOW();
+}
+
+void Parser::init() {
+    V.clear();
+    T.clear();
+    S = "";
+    P.clear();
+    catalog.clear();
+    FIRST.clear();
+    FOLLOW.clear();
+}
+
+void Parser::inputGrammar(std::string grammarFilename) {
     std::fstream input(grammarFilename);  // 输入文件流
     std::string productions;              // 一行中的多个产生式
     std::stringstream ss;                 // 通过stringstream方便处理
@@ -88,12 +125,17 @@ Parser::Parser(std::string grammarFilename) {
             }
         }
     }
+    // 特殊判定
+    if (V.count("id")) {
+        V.erase("id");
+        T.insert("id");
+    }
+    if (V.count("num")) {
+        V.erase("num");
+        T.insert("num");
+    }
 }
-/**
- * @brief 打印一个集合到标准输出
- *
- * @param set 待打印的集合
- */
+
 void printSet(const std::set<std::string>& set) {
     std::vector<std::string> output;
     for (auto s : set) output.push_back(s);
@@ -102,11 +144,6 @@ void printSet(const std::set<std::string>& set) {
     for (int i = 1; i < output.size(); i++) std::cout << "," << output[i];
     std::cout << "}";
 }
-/**
- * @brief 打印产生式
- *
- * @param production 产生式向量
- */
 void printProduction(const std::vector<std::string>& production) {
     std::cout << production[0] << " -> ";
     for (int i = 1; i < production.size(); i++)
@@ -123,7 +160,6 @@ void Parser::printT() {
     printSet(T);
     std::cout << std::endl;
 }
-
 void Parser::printS() { std::cout << "开始符号S\t" << S << std::endl; }
 void Parser::printP() {
     std::cout << "产生式集合P:\n";
@@ -145,4 +181,88 @@ void Parser::printCatalog(std::string v) {
         std::cout << std::endl;
     }
     if (catalog[v].size() == 0) std::cout << "（没有相关产生式）" << std::endl;
+}
+
+bool containsEpsilon(const std::set<std::string>& s) {
+    return s.count(epsilon);
+}
+std::set<std::string> excepctEpsilon(std::set<std::string> s) {
+    s.erase(epsilon);
+    return s;
+}
+void Parser::findFIRST() {
+    // 终极符t的FIRST就是{t}
+    for (auto t : T) {
+        FIRST[t].insert(t);
+    }
+    bool hasChange;
+    do {
+        hasChange = false;
+        // 对于非终极符v来说
+        for (auto v : V)
+            // 枚举每个产生式
+            for (auto id : catalog[v]) {
+                int before = FIRST[v].size();
+                //  当前产生式production
+                const std::vector<std::string>& production{P[id]};
+                // 产生式右侧第一个符号为firWst
+                const std::string& first{production[1]};
+                // 产生式右侧第一个符号是终极符
+                if (T.count(first)) FIRST[v].insert(first);
+                // 产生式右侧第一个符号是epsilon
+                else if (first == epsilon)
+                    FIRST[v].insert(epsilon);
+                // 产生式右侧第一个符号是非终极符
+                else {
+                    auto&& set = excepctEpsilon(FIRST[first]);
+                    FIRST[v].insert(set.begin(), set.end());
+                    int i = 1;
+                    for (; i < production.size() && V.count(production[i]) &&
+                           containsEpsilon(FIRST[production[i]]);
+                         i++) {
+                        auto&& set = excepctEpsilon(FIRST[production[i]]);
+                        FIRST[v].insert(set.begin(), set.end());
+                    }
+                    if (i == production.size()) FIRST[v].insert(epsilon);
+                }
+                hasChange |= FIRST[v].size() != before;
+            }
+    } while (hasChange);
+    for (auto v : V) {
+        std::cout << "FIRST[" << v << "]: ";
+        printSet(FIRST[v]);
+        std::cout << std::endl;
+    }
+}
+void Parser::findFOLLOW() {
+    // 规则1：开始符号的FOLLOW集里至少有$
+    FOLLOW[S].insert("$");
+    int before = -1, after = 0;
+    do {
+        before = after;
+        for (auto production : P) {
+            std::string v = production[0];
+            // 规则2：产生式里非终极符的FOLLOW要包括下一个字段的非空FIRST集
+            for (int i = 1; i < production.size() - 1; i++)
+                if (V.count(production[i])) {
+                    auto&& set = excepctEpsilon(FIRST[production[i + 1]]);
+                    FOLLOW[production[i]].insert(set.begin(), set.end());
+                }
+            // 规则3：非终极符B后面可能为空，那就要加入FOLLOW(A)
+            // 为了实现方便应该倒着写
+            for (int i = production.size() - 1; i >= 1; i--) {
+                if (!V.count(production[i])) break;
+                FOLLOW[production[i]].insert(FOLLOW[v].begin(),
+                                             FOLLOW[v].end());
+                if (!FIRST[production[i]].count(epsilon)) break;
+            }
+        }
+        after = 0;
+        for (auto v : V) after += v.size();
+    } while (before != after);
+    for (auto v : V) {
+        std::cout << "FOLLOW[" << v << "]: ";
+        printSet(FOLLOW[v]);
+        std::cout << std::endl;
+    }
 }
