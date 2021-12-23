@@ -23,6 +23,7 @@ Parser::Parser(std::string grammarFilename) {
     init();
     inputGrammar(grammarFilename);
     T.insert(EndSymbol);
+    T.erase(EpsilonSymbol);
     // 输出若干信息
     printV();
     printT();
@@ -201,6 +202,8 @@ std::set<std::string> excepctEpsilon(std::set<std::string> s) {
 }
 
 void Parser::constructFIRST() {
+    // epsilon
+    FIRST[EpsilonSymbol].insert(EpsilonSymbol);
     // 终极符t的FIRST就是{t}
     for (auto t : T) {
         FIRST[t].insert(t);
@@ -296,6 +299,7 @@ void Parser::constructTable() {
         return;
     }
     std::map<std::string, int> colLength;
+    for (auto& t : T) colLength[t] = 5;  //最小宽度
     for (auto& i : table)
         colLength[i.first.second] =
             std::max(colLength[i.first.second],
@@ -315,4 +319,81 @@ void Parser::constructTable() {
         std::cout << std::endl;
     }
     if (hasEpsilon) T.insert(EpsilonSymbol);
+}
+
+std::string VectorToString(const std::vector<std::string>& v) {
+    std::string s = "";
+    for (auto& i : v) s += i;
+    return s;
+}
+const std::string ErrorMessage = "\033[31mERROR!\033[0m";
+void Parser::analyse(Lexer lexer) {
+    std::vector<std::string> stack{EndSymbol, S};
+    std::vector<std::string> sentence{};
+    bool hasError = false;
+    std::string X;
+    Token a = lexer.getNextToken();
+
+    std::vector<std::string> outStack{"stack", VectorToString(stack)};
+    std::vector<std::string> outInput{"input", a.getContent()};
+    std::vector<std::string> outOutput{"output", ""};
+    std::vector<std::string> outSentence{"sentence", VectorToString(sentence)};
+
+    do {
+        X = stack.back();
+        // X是终结符或结尾
+        if (T.count(X)) {
+            if (X == a.getKind()) {
+                if (X == EndSymbol) break;
+                stack.pop_back();
+                a = lexer.getNextToken();
+                outOutput.push_back("");
+                sentence.push_back(X);
+            } else {
+                // error
+                outOutput.push_back(ErrorMessage);
+                if (a.isValid() == false) break;
+                hasError = true;
+            }
+
+        } else if (table[{X, a.getKind()}].size()) {
+            stack.pop_back();
+            auto& production = P[table[{X, a.getKind()}][0]];
+            if (production[1] != EpsilonSymbol) {
+                for (int i = production.size() - 1; i >= 1; i--)
+                    stack.push_back(production[i]);
+            }
+            outOutput.push_back(ProductionToString(production));
+        } else {
+            // error
+            outOutput.push_back(ErrorMessage);
+            if (a.isValid() == false) break;
+            stack.pop_back();
+            hasError = true;
+        }
+        outStack.push_back(VectorToString(stack));
+        outInput.push_back(a.getContent());
+        outSentence.push_back(VectorToString(sentence));
+    } while (X != EndSymbol);
+
+    if (hasError == false && a.isValid() == false)
+        std::cout << "分析成功！" << std::endl;
+    else
+        std::cout << "分析失败！" << std::endl;
+
+    int colLength[4]{0};
+    for (auto& s : outStack)
+        colLength[0] = std::max(colLength[0], (int)s.length());
+    for (auto& s : outInput)
+        colLength[1] = std::max(colLength[1], (int)s.length());
+    for (auto& s : outOutput)
+        colLength[2] = std::max(colLength[2], (int)s.length());
+    for (auto& s : outSentence)
+        colLength[3] = std::max(colLength[3], (int)s.length());
+    for (int i = 0; i < 4; i++) colLength[i] += 3;
+    for (int i = 0; i < outStack.size(); i++)
+        std::cout << std::setw(colLength[0]) << outStack[i]
+                  << std::setw(colLength[1]) << outInput[i]
+                  << std::setw(colLength[2]) << outOutput[i]
+                  << std::setw(colLength[3]) << outSentence[i] << std::endl;
 }

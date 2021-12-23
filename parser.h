@@ -2,8 +2,9 @@
 #include <set>
 #include <string>
 #include <vector>
-#define EpsilonSymbol "`" // "ε"
-#define EndSymbol "$"
+
+#include "lexer.h"
+#define EpsilonSymbol "`"  // "ε"
 /**
  * @brief 语法分析器
  *
@@ -115,4 +116,10 @@ class Parser {
      * @param v 非终极符（为空时表示全部）
      */
     void printCatalog(std::string v = "");
+    /**
+     * @brief 分析一个句子
+     *
+     * @param lexer 待分析的句子
+     */
+    void analyse(Lexer lexer);
 };

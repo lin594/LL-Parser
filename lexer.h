@@ -5,22 +5,22 @@ class Lexer {
    private:
     /**
      * @brief 输入文件指针
-     * 
+     *
      */
     FILE* input = nullptr;
     /**
      * @brief 当前行号
-     * 
+     *
      */
     int line = 1;
     /**
      * @brief 当前列号
-     * 
+     *
      */
     int col = 0;
     /**
      * @brief 当前Lexer已经被读取到
-     * 
+     *
      */
     int index = 0;
     /**
@@ -44,7 +44,7 @@ class Lexer {
     Lexer();
     /**
      * @brief 获取下一个Token
-     * 
+     *
      * @return Token 获取到的Token
      */
     Token getNextToken();
