@@ -346,8 +346,8 @@ void Parser::analyse(Lexer lexer) {
             if (X == a.getKind()) {
                 if (X == EndSymbol) break;
                 stack.pop_back();
+                outOutput.push_back("match " + a.getKind());
                 a = lexer.getNextToken();
-                outOutput.push_back("");
                 sentence.push_back(X);
             } else {
                 // error
