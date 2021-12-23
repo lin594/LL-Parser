@@ -80,8 +80,12 @@ class Parser {
      * @brief 构造预测分析表
      *
      */
-
     void constructTable();
+    /**
+     * @brief 消除左递归
+     * 
+     */
+    void removeLeftRecursion();
 
    public:
     /**

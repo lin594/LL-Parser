@@ -22,6 +22,7 @@ void printProduction(const std::vector<std::string>& production);
 Parser::Parser(std::string grammarFilename) {
     init();
     inputGrammar(grammarFilename);
+    removeLeftRecursion();
     T.insert(EndSymbol);
     T.erase(EpsilonSymbol);
     // 输出若干信息
@@ -137,6 +138,46 @@ void Parser::inputGrammar(std::string grammarFilename) {
     if (V.count("num")) {
         V.erase("num");
         T.insert("num");
+    }
+}
+void Parser::removeLeftRecursion() {
+    std::set<std::string> VV = std::set<std::string>{V};
+    for (auto v : VV) {
+        std::vector<int> pIdRec;  // 左递归的产生式
+        std::vector<int> pIdNonRec;  // 没有左递归的产生式(不含空产生式)
+        bool hasEpsilon = 0;
+        for (auto id : catalog[v])
+            if (P[id][1] == v)
+                pIdRec.push_back(id);
+            else if (P[id][1] == EpsilonSymbol)
+                hasEpsilon = id;
+            else
+                pIdNonRec.push_back(id);
+        // 没有左递归就忽略
+        if (pIdRec.size() == 0) continue;
+        // 构造新的非终结符
+        std::string vv = v + "'";
+        while (V.count(vv)) vv += "'";
+        V.insert(vv);
+        // 重新开始构建产生式
+        catalog[v].clear();
+        // 空产生式
+        if (hasEpsilon) catalog[v].push_back(hasEpsilon);
+        // beta
+        for (auto id : pIdNonRec) {
+            catalog[v].push_back(id);
+            P[id].push_back(vv);
+        }
+        // alpha
+        for (auto id : pIdRec) {
+            catalog[vv].push_back(id);
+            P[id].erase(P[id].begin() + 1);
+            P[id].push_back(vv);
+            P[id][0] = vv;
+        }
+        catalog[vv].push_back(P.size());
+        P.push_back({vv, EpsilonSymbol});
+        std::cout << "\033[33m消除左递归：\t\033[0m" << v << std::endl;
     }
 }
 
@@ -326,6 +367,7 @@ std::string VectorToString(const std::vector<std::string>& v) {
     for (auto& i : v) s += i;
     return s;
 }
+
 const std::string ErrorMessage = "\033[31mERROR!\033[0m";
 void Parser::analyse(Lexer lexer) {
     std::vector<std::string> stack{EndSymbol, S};
