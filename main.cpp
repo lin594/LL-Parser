@@ -1,5 +1,7 @@
 #include "parser.h"
+#include "lexer.h"
 int main(){
-    Parser parser("grammar.txt");
+    Lexer lexer("sentence.txt");
+    Parser parser("grammar2.txt");
     return 0;
 }
