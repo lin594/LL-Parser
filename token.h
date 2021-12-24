@@ -1,3 +1,12 @@
+/**
+ * @file token.h
+ * @author YAN Lin (sheeplin@bupt.edu.cn)
+ * @brief
+ * @date 2021-12-24
+ *
+ * @copyright Copyright (c) 2021
+ *
+ */
 #include <string>
 #define EndSymbol "$"
 class Token {

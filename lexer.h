@@ -1,5 +1,12 @@
-#include <vector>
-
+/**
+ * @file lexer.h
+ * @author YAN Lin (sheeplin@bupt.edu.cn)
+ * @brief
+ * @date 2021-12-24
+ * 词法分析器类文件
+ * @copyright Copyright (c) 2021
+ *
+ */
 #include "token.h"
 class Lexer {
    private:
