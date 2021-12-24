@@ -1,0 +1,5 @@
+S -> E
+E -> A | B
+A -> num | id
+B -> (L)
+L -> E,L | E
