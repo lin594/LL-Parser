@@ -7,16 +7,18 @@
  * @copyright Copyright (c) 2021
  *
  */
+#include <stdio.h>
+
 #include "parser.h"
-int main() {
-    Parser parser("grammar3.txt");
-    Lexer lexer("sentence3.txt");
-    // Token token=lexer.getNextToken();
-    // while(token.isValid()){
-    //     // printf("%s
-    //     %s\n",token.getKind().c_str(),token.getContent().c_str());
-    //     token=lexer.getNextToken();
-    // }
-    parser.analyse(lexer);
-    return 0;
+int main(int argc, char** argv) {
+    if (argc == 3) {
+        Parser parser(argv[1]);
+        Lexer lexer(argv[2]);
+        parser.analyse(lexer);
+        return EXIT_SUCCESS;
+    } else {
+        puts("参数数量不足！");
+        puts("需要两个文件作为参数，分别代表文法和句子。");
+        return EXIT_FAILURE;
+    }
 }
