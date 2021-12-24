@@ -8,6 +8,10 @@
  *
  */
 #include "token.h"
+/**
+ * @brief 词法分析器
+ *
+ */
 class Lexer {
    private:
     /**
