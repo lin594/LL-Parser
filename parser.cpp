@@ -21,19 +21,37 @@ void printProduction(const std::vector<std::string>& production);
 
 Parser::Parser(std::string grammarFilename) {
     init();
+    std::cout << "\033[32m=====输入文法=====\033[0m" << std::endl;
     inputGrammar(grammarFilename);
-    removeLeftRecursion();
-    leftFactor();
+    printP();
+
+    std::cout << "\033[32m=====消除左递归=====\033[0m" << std::endl;
+    if (removeLeftRecursion())
+        printP();
+    else
+        std::cout << "\033[33m（并没有发生什么）\033[0m" << std::endl;
+
+    std::cout << "\033[32m=====提取左公因子=====\033[0m" << std::endl;
+    if (leftFactor())
+        printP();
+    else
+        std::cout << "\033[33m（并没有发生什么）\033[0m" << std::endl;
+
+    std::cout << "\033[32m=====文法已经处理完啦=====\033[0m" << std::endl;
+
     T.insert(EndSymbol);
     T.erase(EpsilonSymbol);
-    // 输出若干信息
+    std::cout << "\033[36m=====最终分析的文法=====\033[0m" << std::endl;
     printV();
     printT();
     printS();
     printP();
-    printCatalog();
+    // printCatalog();
+    std::cout << "\033[36m=====构建FIRST集=====\033[0m" << std::endl;
     constructFIRST();
+    std::cout << "\033[36m=====构建FOLLOW集=====\033[0m" << std::endl;
     constructFOLLOW();
+    std::cout << "\033[36m=====构建预测分析表=====\033[0m" << std::endl;
     constructTable();
 }
 
@@ -141,7 +159,8 @@ void Parser::inputGrammar(std::string grammarFilename) {
         T.insert("num");
     }
 }
-void Parser::removeLeftRecursion() {
+int Parser::removeLeftRecursion() {
+    bool hasChanged = false;
     std::set<std::string> VV = std::set<std::string>{V};
     for (auto v : VV) {
         std::vector<int> pIdRec;  // 左递归的产生式
@@ -179,9 +198,12 @@ void Parser::removeLeftRecursion() {
         catalog[vv].push_back(P.size());
         P.push_back({vv, EpsilonSymbol});
         std::cout << "\033[33m消除左递归：\t\033[0m" << v << std::endl;
+        hasChanged = true;
     }
+    return hasChanged;
 }
-void Parser::leftFactor() {
+int Parser::leftFactor() {
+    bool hasChanged = false;
     auto VV = std::set<std::string>{V};
     for (auto& v : VV) {
         std::map<std::string, std::vector<int> > factors;
@@ -214,8 +236,10 @@ void Parser::leftFactor() {
                               i.second.end());
             catalog[v].push_back(P.size());
             P.push_back({v, i.first, m});
+            hasChanged = true;
         }
     }
+    return hasChanged;
 }
 
 void printSet(const std::set<std::string>& set) {
@@ -407,6 +431,7 @@ std::string VectorToString(const std::vector<std::string>& v) {
 
 const std::string ErrorMessage = "\033[31mERROR!\033[0m";
 void Parser::analyse(Lexer lexer) {
+    std::cout << "\033[36m=====开始分析=====\033[0m" << std::endl;
     std::vector<std::string> stack{EndSymbol, S};
     std::vector<std::string> sentence{};
     bool hasError = false;
@@ -431,8 +456,8 @@ void Parser::analyse(Lexer lexer) {
             } else {
                 // error
                 outOutput.push_back(ErrorMessage);
-                if (a.isValid() == false) break;
                 hasError = true;
+                if (a.isValid() == false) break;
             }
 
         } else if (table[{X, a.getKind()}].size()) {
@@ -446,19 +471,14 @@ void Parser::analyse(Lexer lexer) {
         } else {
             // error
             outOutput.push_back(ErrorMessage);
-            if (a.isValid() == false) break;
             stack.pop_back();
             hasError = true;
+            if (a.isValid() == false) break;
         }
         outStack.push_back(VectorToString(stack));
         outInput.push_back(a.getContent());
         outSentence.push_back(VectorToString(sentence));
     } while (X != EndSymbol);
-
-    if (hasError == false && a.isValid() == false)
-        std::cout << "分析成功！" << std::endl;
-    else
-        std::cout << "分析失败！" << std::endl;
 
     int colLength[4]{0};
     for (auto& s : outStack)
@@ -475,4 +495,9 @@ void Parser::analyse(Lexer lexer) {
                   << std::setw(colLength[1]) << outInput[i]
                   << std::setw(colLength[2]) << outOutput[i]
                   << std::setw(colLength[3]) << outSentence[i] << std::endl;
+
+    if (hasError == false && a.isValid() == false)
+        std::cout << "\033[32m分析成功！\033[0m" << std::endl;
+    else
+        std::cout << "\033[31m分析失败！\033[0m" << std::endl;
 }
