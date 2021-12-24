@@ -23,6 +23,7 @@ Parser::Parser(std::string grammarFilename) {
     init();
     inputGrammar(grammarFilename);
     removeLeftRecursion();
+    leftFactor();
     T.insert(EndSymbol);
     T.erase(EpsilonSymbol);
     // 输出若干信息
@@ -178,6 +179,42 @@ void Parser::removeLeftRecursion() {
         catalog[vv].push_back(P.size());
         P.push_back({vv, EpsilonSymbol});
         std::cout << "\033[33m消除左递归：\t\033[0m" << v << std::endl;
+    }
+}
+void Parser::leftFactor() {
+    auto VV = std::set<std::string>{V};
+    for (auto& v : VV) {
+        std::map<std::string, std::vector<int> > factors;
+        for (int id : catalog[v]) {
+            auto& production = P[id];
+            factors[production[1]].push_back(id);
+        }
+        catalog[v].clear();
+        for (auto& i : factors) {
+            // 不需要提取公因式
+            if (i.second.size() < 2) {
+                catalog[v].insert(catalog[v].end(), i.second.begin(),
+                                  i.second.end());
+                continue;
+            }
+            // 造出一个新的非终结符
+            std::string m = v;
+            while (V.count(m)) m += "'";
+            V.insert(m);
+            std::cout << "\033[33m提取" << v << "关于" << i.first
+                      << "的左公因式："
+                      << "\t\033[0m" << v << std::endl;
+            for (int id : i.second) {
+                auto& production = P[id];
+                production[0] = m;
+                production.erase(production.begin() + 1);
+                if (production.size() == 1) production.push_back(EpsilonSymbol);
+            }
+            catalog[m].insert(catalog[m].end(), i.second.begin(),
+                              i.second.end());
+            catalog[v].push_back(P.size());
+            P.push_back({v, i.first, m});
+        }
     }
 }
 

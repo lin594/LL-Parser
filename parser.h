@@ -83,9 +83,14 @@ class Parser {
     void constructTable();
     /**
      * @brief 消除左递归
-     * 
+     *
      */
     void removeLeftRecursion();
+    /**
+     * @brief 提取左公因子
+     *
+     */
+    void leftFactor();
 
    public:
     /**
