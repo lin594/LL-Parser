@@ -1,7 +1,7 @@
 /**
  * @file lexer.cpp
  * @author YAN Lin (sheeplin@bupt.edu.cn)
- * @brief
+ * @brief 词法分析器类Lexer实现
  * @date 2021-12-24
  *
  * @copyright Copyright (c) 2021
